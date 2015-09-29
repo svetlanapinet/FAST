@@ -3,6 +3,7 @@ setwd("/Volumes/SVETLANA/R/FAST")
 library(jsonlite)
 library(plyr)
 
+#### ks_data2.txt ####
 data = read.table("ks_data2.txt", header = F, sep = "\t", quote = "", stringsAsFactors = F)
 
 all = data.frame()
@@ -51,12 +52,11 @@ save(allabout, file = 'allabout.RData', row.names = F, col.names = T)
 #### backup_1609 ####
 
 rm(list = ls())
-setwd("/Volumes/SVETLANA/R/FAST/20150920")
+setwd("/Volumes/SVETLANA/R/FAST/data/raw/20150920")
 library(jsonlite)
 library(plyr)
 
 data = read.table("backup_20150920_221636_2.txt", header = F, sep = "\t", quote = "", stringsAsFactors = F, encoding = 'latin1')
-# data = read.table("backup_20150916_150104.txt", header = F, sep = "\t", quote = "", stringsAsFactors = F)
 
 
 # data = read.table("test.txt", header = F, sep = "\t", quote = "", stringsAsFactors = F)
@@ -169,6 +169,116 @@ save(all, file = 'alldata.RData', row.names = F, col.names = T)
 save(allabout, file = 'allabout.RData', row.names = F, col.names = T)
 # save(probs, file = 'allprobs.RData', row.names = F, col.names = T)
 # save(allabout, file = 'allabout.RData', row.names = F, col.names = T)
+
+
+#### backup_2909 ####
+rm(list = ls())
+setwd("/Volumes/SVETLANA/R/FAST/data/raw/20150929")
+library(jsonlite)
+library(plyr)
+
+data = read.table("backup_20150929_152425.txt", header = F, sep = "\t", quote = "", stringsAsFactors = F) # encoding = 'latin1'
+
+    # ---
+    # Keep info about subjects and their OS/navigator
+    # ---
+
+info = data.frame(Subject = data[,1])
+os = strsplit(data[,3], '_')
+v = sapply(os, function(x) length(x))
+
+# not linux users (for which we have info about their OS version)
+d8 = unlist(os[v == 8])
+l = length(d8)
+notlin = data.frame(OS = d8[seq(2,l,by=8)], OS_v = d8[seq(3,l,by=8)], Navigator = d8[seq(5,l,by=8)], Nav_v = d8[seq(6,l,by=8)], Devicetype = d8[seq(8,l,by=8)])
+notlin$which = which(v==8)
+
+#linux users
+d7 = unlist(os[v == 7])
+l = length(d7)
+lin = data.frame(OS = d7[seq(2,l,by=7)], OS_v = NA, Navigator = d7[seq(4,l,by=7)], Nav_v = d7[seq(5,l,by=7)], Devicetype = d7[seq(7,l,by=7)])
+lin$which = which(v==7)
+
+info = merge(info,rbind(notlin,lin), by.x = 'Subject', by.y = 'which', all.x = T)
+
+#which(is.na(info$OS))
+# summary(info)
+
+
+    # ---
+    # Loop over subjects to get their data
+    # ---
+
+all = data.frame()
+allabout = data.frame()
+resp = data.frame()
+training = data.frame()
+subj_err = c()
+
+# sub = 1:10
+# 
+for (S in data[,1])
+{message <- try({
+  A <- fromJSON(data[S,4])
+  
+  # Get responses to questionnaire
+  char = fromJSON(A[A$trial_type == 'form', 'responses'])
+  char = data.frame(t(unlist(char)))
+  resp = rbind.fill(resp, char)
+  resp[S,'Subject'] = S
+  
+  A <- A[, -(15:length(A))]
+  
+  # isolate training
+  training_sub = subset(A,training == T) # select = coln
+  training = rbind.fill(training, data.frame(Subject = factor(S), training_sub, lengthTraining = nrow(training_sub)))
+  
+  # keep only data
+  A = subset(A, training == F)
+  
+  # extract RT for each keypress
+  nc = nchar(A$rt)
+  rts = strsplit(substr(A$rt, 2, nc-1), ",")
+  nel = sapply(rts, function(x) length(x))
+  as.numeric(unlist(rts[nel == 3])) -> B
+  A[,c('RT1', 'RT2', 'RT3')] = NA
+  A[(nel == 3),c('RT1', 'RT2', 'RT3')] = matrix(B, ncol = 3, byrow = T)
+  
+  # calculate IKI
+  A$IKI1 = A$RT2 - A$RT1
+  A$IKI2 = A$RT3 - A$RT2
+  
+  A$Subject = factor(S)
+  
+  all = rbind.fill(all, A) #subset(A, select = colnall)
+})
+
+# store subjects with problems in importing JSON data
+if (class(message) == 'try-error') subj_err = c(subj_err, S)
+
+# show progression
+print(S)}
+
+# these are subjects with errors and which were not imported
+print(subj_err)
+print(length(subj_err))
+
+# go back to these subjects at some point
+S_err = c(515) # + tests christelle/marieke
+
+allabout = merge(info, resp) 
+
+allabout = within(allabout,{ age = as.numeric(age)
+manual = as.factor(manual)
+sexe = as.factor(sexe)
+anyprob = as.factor(anyprob)
+comefrom = as.factor(comefrom)})
+
+setwd('/Volumes/SVETLANA/R/FAST/data/processed/20150929')
+save(all, file = 'alldata.RData', row.names = F, col.names = T)
+save(allabout, file = 'allabout.RData', row.names = F, col.names = T)
+
+
 
 
 #### -----------
