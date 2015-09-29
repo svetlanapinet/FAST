@@ -1,5 +1,5 @@
 rm(list = ls())
-setwd("/Volumes/SVETLANA/R/FAST/20150920")
+setwd("/Volumes/SVETLANA/R/FAST/data/processed/20150929")
 
 #### FIRST LOOK AT DATA INFO ####
 load('allabout.RData')
@@ -15,7 +15,7 @@ summary(allabout$age)
 
 # Exclude some subjects based on technical issues/problems
 S_out = subset(allabout$Subject, allabout$anyprob == 'prob_yes' | allabout$age < 18 |grepl("marieke|christelle",tolower(allabout$anywhich)))
-S_out = c(S_out, c(151, 515, 516, 538)) # errors at importing, go back to them at some point
+S_out = c(S_out, c(515)) # errors at importing, go back to them at some point
 
 
 
@@ -27,7 +27,7 @@ all = droplevels(subset(all, !Subject %in% S_out))
 colMeans(table(all$Subject, all$valid)/80)
 Acc = table(all$Subject, all$valid)/80
 S_acc = rownames(Acc)[Acc[,1] < 0.15]
-S_acc2 = rownames(Acc)[Acc[,1] < 0.10]
+# S_acc2 = rownames(Acc)[Acc[,1] < 0.10]
 
 all = droplevels(subset(all, Subject %in% S_acc))
 
@@ -152,6 +152,10 @@ summary(iki.lmer)
 # Add control variables (trials etc.)
 
 
+###
+# People effects
+# Machine effects
+# 
 
 #### PLOT DATA ####
 

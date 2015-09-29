@@ -268,7 +268,7 @@ S_err = c(515) # + tests christelle/marieke
 
 allabout = merge(info, resp) 
 
-allabout = within(allabout,{ age = as.numeric(age)
+allabout = within(allabout,{ age = as.numeric(as.character(age))
 manual = as.factor(manual)
 sexe = as.factor(sexe)
 anyprob = as.factor(anyprob)
