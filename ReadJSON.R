@@ -173,11 +173,11 @@ save(allabout, file = 'allabout.RData', row.names = F, col.names = T)
 
 #### backup_2909 ####
 rm(list = ls())
-setwd("/Volumes/SVETLANA/R/FAST/data/raw/20150929")
+setwd("/Volumes/SVETLANA/R/FAST/data/raw/20151020")
 library(jsonlite)
 library(plyr)
 
-data = read.table("backup_20150929_152425.txt", header = F, sep = "\t", quote = "", stringsAsFactors = F) # encoding = 'latin1'
+data = read.table("backup_20151020_164756.txt", header = F, sep = "\t", quote = "", stringsAsFactors = F) # encoding = 'latin1'
 
     # ---
     # Keep info about subjects and their OS/navigator
@@ -274,7 +274,7 @@ sexe = as.factor(sexe)
 anyprob = as.factor(anyprob)
 comefrom = as.factor(comefrom)})
 
-setwd('/Volumes/SVETLANA/R/FAST/data/processed/20150929')
+setwd('/Volumes/SVETLANA/R/FAST/data/processed/20151020')
 save(all, file = 'alldata.RData', row.names = F, col.names = T)
 save(allabout, file = 'allabout.RData', row.names = F, col.names = T)
 
