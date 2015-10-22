@@ -1,28 +1,60 @@
 rm(list = ls())
-setwd("/Volumes/SVETLANA/R/FAST/data/processed/20150929")
+setwd("/Volumes/SVETLANA/R/FAST/data/processed/20151020")
+library(ggplot2)
 
 #### FIRST LOOK AT DATA INFO ####
 load('allabout.RData')
 
+# write.table(file = 'allabout.txt', allabout, row.names = F, col.names = T, sep = '\t')
+
 table(allabout$Navigator)
 table(allabout$OS)
+table(allabout$Navigator, allabout$OS)
+allabout = within(allabout, {
+  Navigator = as.character(Navigator)
+  Navigator2 = as.factor(ifelse(Navigator %in% c("Opera", "Chromium", "Iceweasel"), "Autres", Navigator))
+  OS = as.character(OS)
+  OS2 = as.factor(ifelse(OS %in% c("Linux", "Ubuntu", "Fedora"), "Linux", OS))})
+table(allabout$Navigator2, allabout$OS2)
 
 summary(allabout)
 table(allabout$manual)
 table(allabout$sexe)
+table(allabout$sexe, allabout$manual)
 summary(allabout$age)
 
 
 # Exclude some subjects based on technical issues/problems
+subset(allabout$anywhich, allabout$anyprob == 'prob_yes')
 S_out = subset(allabout$Subject, allabout$anyprob == 'prob_yes' | allabout$age < 18 |grepl("marieke|christelle",tolower(allabout$anywhich)))
-S_out = c(S_out, c(515)) # errors at importing, go back to them at some point
+S_out = c(S_out, c(515, 58)) # errors at importing (christelle test) and other identified on excel sheet
+  # how many out
+length(subset(allabout$Subject, allabout$anyprob == 'prob_yes' | allabout$age < 18))
 
+# Get participants info with final dataset
+allabout = subset(allabout, !Subject %in% S_out)
+allabout = within(allabout, {
+  Navigator = as.character(Navigator)
+  Navigator2 = as.factor(ifelse(Navigator %in% c("Opera", "Chromium", "Iceweasel"), "Autres", Navigator))
+  OS = as.character(OS)
+  OS2 = as.factor(ifelse(OS %in% c("Linux", "Ubuntu", "Fedora"), "Linux", OS))})
+
+table(allabout$Navigator2, allabout$OS2)
+table(allabout$OS2, allabout$OS_v)
+table(allabout$Navigator2, allabout$Nav_v)
+table(allabout$sexe)
+table(allabout$manual)
+table(allabout$sexe, allabout$manual)
+summary(allabout$age)
+table(allabout$comefrom)
 
 
 #### REARRANGE DATA ####
 load('alldata.RData')
 
 all = droplevels(subset(all, !Subject %in% S_out))
+# save(all, file = 'alldata_541.RData')
+all_541 = all
 
 colMeans(table(all$Subject, all$valid)/80)
 Acc = table(all$Subject, all$valid)/80
@@ -30,6 +62,7 @@ S_acc = rownames(Acc)[Acc[,1] < 0.15]
 # S_acc2 = rownames(Acc)[Acc[,1] < 0.10]
 
 all = droplevels(subset(all, Subject %in% S_acc))
+# save(all, file = 'alldata_529.RData') # 541 participants & 85% Acc => 529
 
 
 ### Rosenbaum's design includes:
@@ -57,8 +90,8 @@ all = merge(all, cond, all.x = T)
 all$Uncseq = NULL
 
 # Compute means by condition
-cor = subset(all, valid == 1 & IKI1 > 0 & IKI2 >0)
-
+cor = subset(all, valid == 1 & IKI1 > 0 & IKI2 > 0)
+nrow(cor)/nrow(all_541)
 
 #### RT ####
 
@@ -76,6 +109,9 @@ summary(rt.aov)
 rt.aov = aov(RT1 ~ Hand +  Seq * Unc + Error(Subject/(Seq * Unc)), data = rt)
 summary(rt.aov) 
 
+ggplot(rt, aes(y = RT1, x = Unc)) + stat_summary(fun.y = 'mean', geom = 'point', size = 5) + stat_summary(fun.data = 'mean_cl_boot', geom = 'pointrange')
+aggregate(RT1 ~ Unc, FUN = mean, data = rt)
+aggregate(RT1 ~ Seq, FUN = mean, data = rt)
 
 # Regression
 library(lme4)
@@ -109,12 +145,22 @@ Subject = as.factor(Subject)})
 
 
 # ANOVA
+iki.aov = aov(IKI ~ Hand * Seq * Unc * Pos + Error(Subject/(Seq * Unc * Pos)), data = m)
+summary(iki.aov)
+
 iki.aov = aov(IKI ~ Hand + Seq * Unc * Pos + Error(Subject/(Seq * Unc * Pos)), data = m)
 summary(iki.aov)
+
+aggregate(IKI ~ Seq, FUN = mean, data = m)
+aggregate(IKI ~ Pos, FUN = mean, data = m)
+ggplot(m, aes(y = IKI, x = Seq, color = Pos)) + stat_summary(fun.y = 'mean', geom = 'point', size = 5) + stat_summary(fun.data = 'mean_cl_boot', geom = 'pointrange')
+ggplot(m, aes(y = IKI, x = Pos, color = Seq)) + stat_summary(fun.y = 'mean', geom = 'point', size = 5) + stat_summary(fun.data = 'mean_cl_boot', geom = 'pointrange') + facet_wrap(~Unc)
+
 
 # Regression
 summary(lm(IKI ~ Hand + Seq * Unc * Pos, data = m))
 summary(lmer(IKI ~ Hand + Seq * Unc * Pos + (1|Subject), data = m))
+
 
 # Mixed models
 
