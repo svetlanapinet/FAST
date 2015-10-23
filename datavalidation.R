@@ -1,11 +1,90 @@
 rm(list = ls())
-setwd("/Volumes/SVETLANA/R/FAST/data/processed/20150929")
+setwd("/Volumes/SVETLANA/R/FAST/data/processed/20151020")
 library(ggplot2)
 library(diptest)
 library(mclust)
 library(fts)
-load('alldata.RData')
+load('alldata_541.RData') # Only people with no reported problem
 
+# Bootstrap validation
+
+means = aggregate(RT1 ~ Subject, FUN = mean, data = all)
+
+bootmean <- function (means, N) {sub = sample(means$Subject, N)
+sample1 = subset(means, Subject %in% sub)
+m1 = mean(sample1[,2])
+return(m1)}
+
+Ns = c(5, 10, 20, 50, 100, 200, 300, 400, 500)
+Ms = c()
+CIl = c()
+CIu = c()
+# N = 10
+for (N in Ns) {
+  b = c()
+  while (length(b) < 1000) {b = c(b,bootmean(means,N))}
+  mu = mean(b)
+  ci = sd(b)/sqrt(N)
+  ci_l = mu - ci
+  ci_u = mu + ci
+  Ms = c(Ms,mu)
+  CIl = c(CIl,ci_l)
+  CIu = c(CIu,ci_u)}
+
+d = data.frame(Ns, Ms, CIl, CIu)
+ggplot(d, aes(x = Ns, y = Ms)) + geom_path() + geom_point(size = 3) + geom_errorbar(aes(ymin = CIl, ymax = CIu)) + 
+  coord_cartesian(ylim = c(575,675)) + scale_x_log10()
+
+
+# Distribution of means
+
+means = aggregate(RT1 ~ Subject, FUN = mean, data = all)
+ggplot(means, aes(RT1)) + geom_histogram(binwidth = 50)
+tail(means[order(means$RT1),])
+# S299, S244 are weird
+s = subset(all, Subject == 299)
+s = subset(all, Subject == 244)
+  # some really long RT, probably unreported interruption?
+
+ggplot(subset(all,RT1<5000), aes(RT1)) + geom_histogram(binwidth = 50)
+tail(remove.na.rows(all[order(all$RT1),]),50)
+
+# We can consider trials where RT1 < 3000 as a proxy for people actually being engaged in the task
+all_3000 = subset(all, RT1 < 3000)
+means = aggregate(RT1 ~ Subject, FUN = mean, data = all_3000)
+ggplot(means, aes(RT1)) + geom_histogram(binwidth = 50)
+all = all_3000
+
+
+# Same with IKI
+
+iki = data.frame(Subject = rep(all$Subject,2), IKI = c(all$IKI1, all$IKI2))
+ggplot(subset(iki, IKI < 2000), aes(IKI)) + geom_histogram()
+means = aggregate(IKI ~ Subject, FUN = mean, data = iki)
+ggplot(means, aes(IKI)) + geom_histogram(binwidth = 5)
+
+Ns = c(5, 10, 20, 50, 100, 200, 300, 400, 500)
+Ms = c()
+CIl = c()
+CIu = c()
+# N = 10
+for (N in Ns) {
+  b = c()
+  while (length(b) < 1000) {b = c(b,bootmean(means,N))}
+  mu = mean(b)
+  ci = sd(b)/sqrt(N)
+  ci_l = mu - ci
+  ci_u = mu + ci
+  Ms = c(Ms,mu)
+  CIl = c(CIl,ci_l)
+  CIu = c(CIu,ci_u)}
+
+d = data.frame(Ns, Ms, CIl, CIu)
+ggplot(d, aes(x = Ns, y = Ms)) + geom_path() + geom_point(size = 3) + geom_errorbar(aes(ymin = CIl, ymax = CIu)) + 
+  coord_cartesian(ylim = c(210,260)) + scale_x_log10()
+
+
+#
 suj = subset(all, Subject == sample(unique(all$Subject),1))
 #116/452 (16) vs. 59/326/277 (8) vs. 577/74/286 (1)
 RT = c(suj$RT1, suj$RT2, suj$RT3)
@@ -23,7 +102,7 @@ suj = subset(all, Subject == sample(unique(all$Subject),1))
 RT = c(suj$RT1, suj$RT2, suj$RT3)
 data = data.frame(RT = RT, mod8 = RT %% 8, mod16 = RT %% 16)
 
-ggplot(data, aes(mod8)) + geom_histogram(binwidth = 0.5) + geom_hline(yintercept = length(RT)/48, color = 'red')
+ggplot(data, aes(mod8)) + geom_histogram(binwidth = 0.5) + geom_hline(yintercept = length(RT)/48, color = 'red') + coord_cartesian(xlim = c(seq(0,8)))
 # ggplot(data, aes(mod16)) + geom_histogram(binwidth = 0.5) + geom_hline(yintercept = length(RT)/48, color = 'red')
 
   #not that easy to characterize bimodality
