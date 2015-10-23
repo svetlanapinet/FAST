@@ -64,6 +64,7 @@ S_acc = rownames(Acc)[Acc[,1] < 0.15]
 all = droplevels(subset(all, Subject %in% S_acc))
 # save(all, file = 'alldata_529.RData') # 541 participants & 85% Acc => 529
 
+# load('alldata_529.Rdata')
 
 ### Rosenbaum's design includes:
 # - Type of sequence (constant vs. varying) => Seq
@@ -89,7 +90,9 @@ colnames(cond)[4] <- 'Unc'
 all = merge(all, cond, all.x = T)
 all$Uncseq = NULL
 
-# Compute means by condition
+
+## Add a criterion of max RT ? ##
+all = subset(all, RT1 < 3000)
 cor = subset(all, valid == 1 & IKI1 > 0 & IKI2 > 0)
 nrow(cor)/nrow(all_541)
 
@@ -112,6 +115,8 @@ summary(rt.aov)
 ggplot(rt, aes(y = RT1, x = Unc)) + stat_summary(fun.y = 'mean', geom = 'point', size = 5) + stat_summary(fun.data = 'mean_cl_boot', geom = 'pointrange')
 aggregate(RT1 ~ Unc, FUN = mean, data = rt)
 aggregate(RT1 ~ Seq, FUN = mean, data = rt)
+ggplot(rt, aes(y = RT1, x = Seq, color = Unc)) + stat_summary(fun.y = 'mean', geom = 'point', size = 5) + stat_summary(fun.data = 'mean_cl_boot', geom = 'pointrange')
+aggregate(RT1 ~ Seq + Unc, FUN = mean, data = rt)
 
 # Regression
 library(lme4)
