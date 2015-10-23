@@ -102,8 +102,12 @@ suj = subset(all, Subject == sample(unique(all$Subject),1))
 RT = c(suj$RT1, suj$RT2, suj$RT3)
 data = data.frame(RT = RT, mod8 = RT %% 8, mod16 = RT %% 16)
 
-ggplot(data, aes(mod8)) + geom_histogram(binwidth = 0.5) + geom_hline(yintercept = length(RT)/48, color = 'red') + coord_cartesian(xlim = c(seq(0,8)))
+# ggplot(data, aes(mod8)) + geom_histogram(binwidth = 0.5) + geom_hline(yintercept = 15, color = 'red') + coord_cartesian(xlim = c(seq(0,8)))
 # ggplot(data, aes(mod16)) + geom_histogram(binwidth = 0.5) + geom_hline(yintercept = length(RT)/48, color = 'red')
+
+ggplot(data, aes(mod8)) + geom_histogram(binwidth = 0.5) + coord_cartesian(xlim = c(seq(0,8)))
+chisq.test(table(data$mod8))$p.value
+
 
   #not that easy to characterize bimodality
 # summary(Mclust(na.exclude(data$mod8)))
@@ -112,14 +116,35 @@ ggplot(data, aes(mod8)) + geom_histogram(binwidth = 0.5) + geom_hline(yintercept
 # dip.test(na.exclude(data$mod16))
 
   # instead, have a criterion, according to the size of the vector
+all$Subject = as.numeric(as.character(all$Subject))
 allmod = data.frame(suj = c(all$Subject, all$Subject, all$Subject), RT = c(all$RT1, all$RT2, all$RT3))
 allmod <- remove.na.rows(allmod)
 allmod$mod8 = allmod$RT %% 8
 allmod$mod16 = allmod$RT %% 16
 
-tab = table(allmod$suj, allmod$mod8)
-arr = which(tab < 5, arr.ind = T)
-sujpb = unique(arr[,1]) # length = 185
+tab = as.data.frame.matrix(table(allmod$suj, allmod$mod8))
+results = data.frame(suj = rownames(tab))
+# arr = which(tab < 5, arr.ind = T)
+# sujpb = unique(arr[,1]) # length = 185
+
+# chi-square test on table mod8
+test = c()
+for (s in 1:nrow(tab)) { results$test[s] = chisq.test(tab[s,])$p.value }
+length(which(results$test > 0.05)) # 167
+length(which(results$test > 0.01)) # 208
+length(which(results$test > 0.001)) # 245
+length(which(results$test > 0.05/541)) # Bonferroni gives 276
+
+ggplot(results, aes(test))+geom_histogram(binwidth = 0.01)+geom_vline(xintercept = 0.05, color = 'red') # not great representation
+
+# Is there a mode standing out for those subjects with a sampling bias
+results$YN = ifelse(results$test > 0.05/541, 0, 1)
+results$mode = NA
+for (s in 1:nrow(tab)) {
+  if (results$YN[s] == 1) results$mode[s] = as.numeric(names(which.max(tab[s,])))}
+
+ggplot(results, aes(mode))+geom_histogram()
+
 
 # with 5 subjects
 
