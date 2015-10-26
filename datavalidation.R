@@ -84,7 +84,9 @@ ggplot(d, aes(x = Ns, y = Ms)) + geom_path() + geom_point(size = 3) + geom_error
   coord_cartesian(ylim = c(210,260)) + scale_x_log10()
 
 
-#
+# Sampling rate
+
+  # plot differences of ordered RTs
 suj = subset(all, Subject == sample(unique(all$Subject),1))
 #116/452 (16) vs. 59/326/277 (8) vs. 577/74/286 (1)
 RT = c(suj$RT1, suj$RT2, suj$RT3)
@@ -96,56 +98,91 @@ data = data.frame(x = seq(1,length(d)), RT = na.exclude(RT), RTs = RTs, d = d)
 ggplot(subset(data, d<30), aes(x = x, y = sort(d))) + geom_point()
 ggplot(subset(data, d<15), aes(x = x, y = sort(d))) + geom_point()
 
-
-# with modulo
+  # with modulo (8)
 suj = subset(all, Subject == sample(unique(all$Subject),1))
 RT = c(suj$RT1, suj$RT2, suj$RT3)
 data = data.frame(RT = RT, mod8 = RT %% 8, mod16 = RT %% 16)
-
-# ggplot(data, aes(mod8)) + geom_histogram(binwidth = 0.5) + geom_hline(yintercept = 15, color = 'red') + coord_cartesian(xlim = c(seq(0,8)))
-# ggplot(data, aes(mod16)) + geom_histogram(binwidth = 0.5) + geom_hline(yintercept = length(RT)/48, color = 'red')
 
 ggplot(data, aes(mod8)) + geom_histogram(binwidth = 0.5) + coord_cartesian(xlim = c(seq(0,8)))
 chisq.test(table(data$mod8))$p.value
 
 
-  #not that easy to characterize bimodality
-# summary(Mclust(na.exclude(data$mod8)))
-# summary(Mclust(na.exclude(data$mod16)))
-# summary(densityMclust(na.exclude(data$mod16)))
-# dip.test(na.exclude(data$mod16))
-
-  # instead, have a criterion, according to the size of the vector
+  # Let's have a criterion, according to the distribution of modulos (if homogeneous => sampling is too)
 all$Subject = as.numeric(as.character(all$Subject))
 allmod = data.frame(suj = c(all$Subject, all$Subject, all$Subject), RT = c(all$RT1, all$RT2, all$RT3))
 allmod <- remove.na.rows(allmod)
 allmod$mod8 = allmod$RT %% 8
-allmod$mod16 = allmod$RT %% 16
 
 tab = as.data.frame.matrix(table(allmod$suj, allmod$mod8))
 results = data.frame(suj = rownames(tab))
-# arr = which(tab < 5, arr.ind = T)
-# sujpb = unique(arr[,1]) # length = 185
 
 # chi-square test on table mod8
 test = c()
 for (s in 1:nrow(tab)) { results$test[s] = chisq.test(tab[s,])$p.value }
+ggplot(results, aes(test))+geom_histogram(binwidth = 0.01)+geom_vline(xintercept = 0.05, color = 'red') # not great representation
+
 length(which(results$test > 0.05)) # 167
 length(which(results$test > 0.01)) # 208
 length(which(results$test > 0.001)) # 245
 length(which(results$test > 0.05/541)) # Bonferroni gives 276
 
-ggplot(results, aes(test))+geom_histogram(binwidth = 0.01)+geom_vline(xintercept = 0.05, color = 'red') # not great representation
+# FDR gives:
+fdr = data.frame(s = 1:541, p = sort(results$test))
+fdr$k = (fdr$s*0.05 / 541)
+fdr$crit = fdr$p < fdr$k
+max(which(fdr$crit)) # 363 => then, reject 1:363 null hyp (67%)
 
-# Is there a mode standing out for those subjects with a sampling bias
+
+
+# Is there a mode standing out for those subjects with a sampling bias?
 results$YN = ifelse(results$test > 0.05/541, 0, 1)
 results$mode = NA
 for (s in 1:nrow(tab)) {
   if (results$YN[s] == 1) results$mode[s] = as.numeric(names(which.max(tab[s,])))}
 
 ggplot(results, aes(mode))+geom_histogram()
+  # answer is not really...
+
+# Do we see the same bias on IKI ?
+
+all$Subject = as.numeric(as.character(all$Subject))
+allmod = data.frame(suj = c(all$Subject, all$Subject), IKI = c(all$IKI1, all$IKI2))
+allmod <- remove.na.rows(allmod)
+allmod$mod8 = allmod$IKI %% 8
+
+tab = as.data.frame.matrix(table(allmod$suj, allmod$mod8))
+results = data.frame(suj = rownames(tab))
+
+# chi-square test on table mod8 (if significant, then not uniform and sampling bias)
+test = c()
+for (s in 1:nrow(tab)) { results$test[s] = chisq.test(tab[s,])$p.value }
+
+ggplot(results, aes(test))+geom_histogram(binwidth = 0.01)+geom_vline(xintercept = 0.05, color = 'red') # not great representation
+
+length(which(results$test > 0.05)) # 92
+length(which(results$test > 0.01)) # 96
+length(which(results$test > 0.001)) # 101
+length(which(results$test > 0.05/541)) # Bonferroni gives 105
+  # => even more than RTs!
+
+# FDR gives:
+fdr = data.frame(s = 1:541, p = sort(results$test))
+fdr$k = (fdr$s*0.05 / 541)
+fdr$crit = fdr$p < fdr$k
+max(which(fdr$crit)) # 449/83%
 
 
+# plot examples for IKI
+suj = subset(all, Subject == sample(unique(all$Subject),1))
+IKI = c(suj$IKI1, suj$IKI2)
+data = data.frame(IKI = IKI, mod8 = IKI %% 8)
+
+ggplot(data, aes(mod8)) + geom_histogram(binwidth = 0.5) + coord_cartesian(xlim = c(seq(0,8)))
+chisq.test(table(data$mod8))$p.value
+ 
+
+
+# -------------------
 # with 5 subjects
 
 suj = subset(all, Subject %in% sample(unique(all$Subject),5))
