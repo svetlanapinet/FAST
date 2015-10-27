@@ -66,6 +66,7 @@ all = droplevels(subset(all, Subject %in% S_acc))
 
 # load('alldata_529.Rdata')
 
+
 ### Rosenbaum's design includes:
 # - Type of sequence (constant vs. varying) => Seq
 # - Serial position of uncertainty (2nd vs. 3rd) => Unc
@@ -93,8 +94,11 @@ all$Uncseq = NULL
 
 ## Add a criterion of max RT ? ##
 all = subset(all, RT1 < 3000)
+
+
 cor = subset(all, valid == 1 & IKI1 > 0 & IKI2 > 0)
-nrow(cor)/nrow(all_541)
+# nrow(cor)/nrow(all_541)
+
 
 #### RT ####
 
@@ -118,18 +122,6 @@ aggregate(RT1 ~ Seq, FUN = mean, data = rt)
 ggplot(rt, aes(y = RT1, x = Seq, color = Unc)) + stat_summary(fun.y = 'mean', geom = 'point', size = 5) + stat_summary(fun.data = 'mean_cl_boot', geom = 'pointrange')
 aggregate(RT1 ~ Seq + Unc, FUN = mean, data = rt)
 
-# Regression
-library(lme4)
-
-summary(lm(RT1 ~ Hand +  Seq * Unc, data = rt))
-
-  # on means
-A.lmer = lmer(RT1 ~ Hand +  Seq * Unc + (1|Subject), data = rt)
-summary(A.lmer)
-
-  # on all data
-A.lmer = lmer(RT1 ~ Hand +  Seq * Unc + (1|Subject) + (1|finger_seq), data = cor)
-summary(A.lmer)
 
 
 #### IKI ####
@@ -162,12 +154,89 @@ ggplot(m, aes(y = IKI, x = Seq, color = Pos)) + stat_summary(fun.y = 'mean', geo
 ggplot(m, aes(y = IKI, x = Pos, color = Seq)) + stat_summary(fun.y = 'mean', geom = 'point', size = 5) + stat_summary(fun.data = 'mean_cl_boot', geom = 'pointrange') + facet_wrap(~Unc)
 
 
-# Regression
-summary(lm(IKI ~ Hand + Seq * Unc * Pos, data = m))
-summary(lmer(IKI ~ Hand + Seq * Unc * Pos + (1|Subject), data = m))
 
 
 # Mixed models
+# with RT<3000 criteria
+library(lme4)
+library(rms)
+library(languageR)
+
+  ### RTs
+
+# on all data
+A.lmer = lmer(RT1 ~ Hand +  Seq * Unc + (1|Subject) + (1|finger_seq), data = cor)
+summary(A.lmer)
+
+A.lmer2 = lmer(RT1 ~ Hand +  Seq * Unc + trial_index_global + (1|Subject) + (1|finger_seq), data = cor)
+summary(A.lmer2)
+
+
+# Results
+#                     Estimate Std. Error t value
+# (Intercept)         743.8150    22.5633   32.97
+# Handright            17.8088    20.4523    0.87
+# Seqv                 29.2709    17.0844    1.71
+# Unc3               -125.3070    17.1104   -7.32
+# trial_index_global   -0.7700     0.1607   -4.79
+# Seqv:Unc3            -9.0013    24.0923   -0.37
+
+
+# People effects
+cor$Subject = as.numeric(as.character(cor$Subject))
+cor2 = merge(cor, allabout, by = 'Subject')
+
+m = aggregate(RT1 ~ Subject, FUN = mean, data = cor2)
+m = merge(m, allabout)
+ggplot(m, aes(x = age, y = RT1)) + geom_point()+ stat_smooth() 
+  #breaking the effect of age in two parts seems reasonnable
+
+A.lmer = lmer(RT1 ~ Hand +  Seq * Unc + trial_index_global + sexe + rcs(age,3) + manual + (1|Subject) + (1|finger_seq), data = cor2)
+summary(A.lmer)
+plotLMER.fnc(A.lmer)
+
+# Results
+#                     Estimate Std. Error t value
+# (Intercept)         574.25957   56.54698   10.16
+# Handright            -5.13205   13.63214   -0.38
+# Seqv                 47.47307    4.28691   11.07
+# Unc3               -118.46551    3.38003  -35.05
+# Seqv:Unc3           -11.59974    5.44254   -2.13
+# trial_index_global   -1.06978    0.03356  -31.88
+# sexemale            -64.46650   13.63158   -4.73
+# rcs(age, 3)age        3.67565    1.64669    2.23
+# rcs(age, 3)age'       4.37365    2.08083    2.10
+# manualright          27.09014   19.85717    1.36
+
+
+# Machine effects
+
+A.lmer2 = lmer(RT1 ~ Hand +  Seq * Unc + trial_index_global + OS2 + Navigator2 + (1|Subject) + (1|finger_seq), data = cor2)
+summary(A.lmer2)
+plotLMER.fnc(A.lmer2)
+
+#                               Estimate Std. Error t value
+# (Intercept)                  667.97121   64.43174   10.37
+# Handright                     -3.36064   14.97596   -0.22
+# Seqv                          47.44003    4.34772   10.91
+# Unc3                        -119.58489    3.37308  -35.45
+# Seqv:Unc3                    -10.82484    5.48627   -1.97
+# trial_index_global            -1.07587    0.03352  -32.10
+# OS2OS X                       78.81698   37.00379    2.13
+# OS2Windows                    55.77929   32.35572    1.72
+# Navigator2Chrome             -47.91682   71.32351   -0.67
+# Navigator2Firefox             42.28480   69.48908    0.61
+# Navigator2Internet Explorer   93.77576   73.76683    1.27
+# Navigator2Safari             -48.02853   76.70075   -0.63
+
+
+# People + machine 
+A.lmer3 = lmer(RT1 ~ Hand +  Seq * Unc + trial_index_global + sexe + rcs(age,3) + manual + OS2 + Navigator2 + (1|Subject) + (1|finger_seq), data = cor2)
+summary(A.lmer3)
+plotLMER.fnc(A.lmer3)
+
+
+  ### IKI
 
    # rearrange data
 col = c('Subject', 'part', 'block', 'trial_index', 'trial_index_global', 'stimulus', 'key_seq', 'finger_seq', 'Hand', 'Seq', 'Unc')
@@ -179,33 +248,73 @@ IKI1$Pos = factor(1)
 IKI2$Pos = factor(2)
 cor_long = rbind(IKI1, IKI2)
 
-cor_long = subset(cor_long, Subject %in% S_acc2) # criteria on accuracy (> 90%)
-
   # run models
-iki.lmer = lmer(IKI ~ Hand + Seq * Unc * Pos + (1|Subject) + (1|finger_seq), data = cor_long)
+iki.lmer = lmer(IKI ~ Hand + Seq * Unc * Pos + trial_index_global + (1|Subject) + (1|finger_seq), data = cor_long)
 summary(iki.lmer)
 
 # Results
 #                 Estimate Std. Error t value
-# (Intercept)     256.944      5.653   45.46
-# Handright        -5.011      7.625   -0.66
-# Seqv            -20.423      2.251   -9.07
-# Unc3            -26.794      1.529  -17.52
-# Pos2            -36.784      1.531  -24.03
-# Seqv:Unc3        12.427      2.717    4.57
-# Seqv:Pos2        22.468      2.161   10.40
-# Unc3:Pos2        44.510      2.162   20.59 ** interaction of interest
-# Seqv:Unc3:Pos2  -18.875      3.049   -6.19
+# (Intercept)        281.2043     5.4747   51.36
+# Handright           -4.0006     7.3851   -0.54
+# Seqv               -18.9229     1.5618  -12.12
+# Unc3               -29.1934     1.4888  -19.61
+# Pos2               -37.4723     1.4902  -25.15
+# Seqv:Unc3           11.4102     2.1507    5.31
+# Seqv:Pos2           21.9627     2.1050   10.43
+# Unc3:Pos2           45.8004     2.1030   21.78 ** interest of interest
+# Seqv:Unc3:Pos2     -16.9328     2.9668   -5.71
+# trial_index_global  -0.3077     0.0105  -29.30
 
 # Do we keep all these effects we don't really care about ??
-
-# Add random slopes
-# Add control variables (trials etc.)
+# Add random slopes ?
 
 
-###
+cor_long$Subject = as.numeric(as.character(cor_long$Subject))
+cor_long2 = merge(cor_long, allabout)
+
 # People effects
+iki.lmer2 = lmer(IKI ~ Hand + Seq * Unc * Pos + trial_index_global + sexe + rcs(age,3) + manual + (1|Subject) + (1|finger_seq), data = cor_long2)
+summary(iki.lmer2)
+
+# Results
+#                     Estimate Std. Error t value
+# (Intercept)        210.99823   26.69244   7.905
+# Handright           -8.05653    6.37505  -1.264
+# Seqv               -19.10456    1.59838 -11.952
+# Unc3               -29.04277    1.49460 -19.432
+# Pos2               -37.64420    1.49601 -25.163
+# Seqv:Unc3           11.56613    2.18120   5.303
+# Seqv:Pos2           21.92569    2.11329  10.375
+# Unc3:Pos2           45.63770    2.11123  21.617 **
+# Seqv:Unc3:Pos2     -17.13993    2.97835  -5.755
+# trial_index_global  -0.30742    0.01054 -29.174
+# sexemale           -37.77269    6.44239  -5.863
+# rcs(age, 3)age       1.53407    0.77826   1.971
+# rcs(age, 3)age'      2.69067    0.98342   2.736
+# manualright          9.93654    9.38496   1.059
+
 # Machine effects
+iki.lmer3 = lmer(IKI ~ Hand + Seq * Unc * Pos + trial_index_global + OS2 + Navigator2 + (1|Subject) + (1|finger_seq), data = cor_long2)
+summary(iki.lmer3)
+
+# Results
+#                             Estimate Std. Error t value
+# (Intercept)                 229.15544   32.07201   7.145
+# Handright                    -5.09759    7.38206  -0.691
+# Seqv                        -18.77189    1.55682 -12.058
+# Unc3                        -29.03606    1.49098 -19.474
+# Pos2                        -37.40957    1.49226 -25.069
+# Seqv:Unc3                    11.24923    2.14848   5.236
+# Seqv:Pos2                    21.84015    2.10791  10.361
+# Unc3:Pos2                    45.82546    2.10597  21.760 **
+# Seqv:Unc3:Pos2              -16.90957    2.97099  -5.692
+# trial_index_global           -0.30606    0.01052 -29.093
+# OS2OS X                      16.05957   18.43717   0.871
+# OS2Windows                   10.76024   16.12159   0.667
+# Navigator2Chrome             25.74897   35.53964   0.725
+# Navigator2Firefox            45.56196   34.62581   1.316
+# Navigator2Internet Explorer  63.37644   36.75686   1.724
+# Navigator2Safari             24.50057   38.21857   0.641
 # 
 
 #### PLOT DATA ####
