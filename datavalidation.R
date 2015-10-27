@@ -6,7 +6,7 @@ library(mclust)
 library(fts)
 load('alldata_541.RData') # Only people with no reported problem
 
-# Bootstrap validation
+##### Bootstrap validation #####
 
 means = aggregate(RT1 ~ Subject, FUN = mean, data = all)
 
@@ -84,7 +84,7 @@ ggplot(d, aes(x = Ns, y = Ms)) + geom_path() + geom_point(size = 3) + geom_error
   coord_cartesian(ylim = c(210,260)) + scale_x_log10()
 
 
-# Sampling rate
+##### Sampling rate #####
 
   # plot differences of ordered RTs
 suj = subset(all, Subject == sample(unique(all$Subject),1))
@@ -117,19 +117,20 @@ tab = as.data.frame.matrix(table(allmod$suj, allmod$mod8))
 results = data.frame(suj = rownames(tab))
 
 # chi-square test on table mod8
-test = c()
 for (s in 1:nrow(tab)) { results$test[s] = chisq.test(tab[s,])$p.value }
 ggplot(results, aes(test))+geom_histogram(binwidth = 0.01)+geom_vline(xintercept = 0.05, color = 'red') # not great representation
 
-length(which(results$test > 0.05)) # 167
+length(which(results$test > 0.05)) # 165
 length(which(results$test > 0.01)) # 208
-length(which(results$test > 0.001)) # 245
+length(which(results$test > 0.001)) # 243
 length(which(results$test > 0.05/541)) # Bonferroni gives 276
 
 # FDR gives:
-fdr = data.frame(s = 1:541, p = sort(results$test))
+fdr = subset(results, select = c('suj', 'test'))
+fdr = fdr[order(fdr$test),]
+fdr$s = seq(1:nrow(fdr))
 fdr$k = (fdr$s*0.05 / 541)
-fdr$crit = fdr$p < fdr$k
+fdr$crit = fdr$test < fdr$k
 max(which(fdr$crit)) # 363 => then, reject 1:363 null hyp (67%)
 
 
@@ -143,6 +144,25 @@ for (s in 1:nrow(tab)) {
 ggplot(results, aes(mode))+geom_histogram()
   # answer is not really...
 
+
+# Out of curiosity, compute root mean square on each subject's distribution of modulos
+RMS <- function(x) {sqrt(mean(x^2))}
+
+for (s in 1:nrow(tab)) { results$rms[s] = RMS(tab[s,])}
+results$bon = as.factor(ifelse(results$test > 0.05/541, 0, 1))
+results = merge(results, fdr[,c('suj','crit')], by = 'suj')
+results$p5 = as.factor(ifelse(results$test > 0.05,0,1))
+results$p1 = as.factor(ifelse(results$test > 0.01,0,1))
+results$p10 = as.factor(ifelse(results$test > 0.001,0,1))
+
+ggplot(results, aes(rms, fill = YN)) + geom_histogram()
+ggplot(results, aes(rms, fill = crit)) + geom_histogram()
+ggplot(results, aes(rms, fill = p5)) + geom_histogram()
+ggplot(results, aes(rms, fill = p1)) + geom_histogram()
+ggplot(results, aes(rms, fill = p10)) + geom_histogram()
+
+
+
 # Do we see the same bias on IKI ?
 
 all$Subject = as.numeric(as.character(all$Subject))
@@ -154,7 +174,6 @@ tab = as.data.frame.matrix(table(allmod$suj, allmod$mod8))
 results = data.frame(suj = rownames(tab))
 
 # chi-square test on table mod8 (if significant, then not uniform and sampling bias)
-test = c()
 for (s in 1:nrow(tab)) { results$test[s] = chisq.test(tab[s,])$p.value }
 
 ggplot(results, aes(test))+geom_histogram(binwidth = 0.01)+geom_vline(xintercept = 0.05, color = 'red') # not great representation
@@ -180,6 +199,8 @@ data = data.frame(IKI = IKI, mod8 = IKI %% 8)
 ggplot(data, aes(mod8)) + geom_histogram(binwidth = 0.5) + coord_cartesian(xlim = c(seq(0,8)))
 chisq.test(table(data$mod8))$p.value
  
+
+
 
 
 # -------------------
