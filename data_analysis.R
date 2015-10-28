@@ -54,7 +54,7 @@ load('alldata.RData')
 
 all = droplevels(subset(all, !Subject %in% S_out))
 # save(all, file = 'alldata_541.RData')
-all_541 = all
+# all_541 = all
 
 colMeans(table(all$Subject, all$valid)/80)
 Acc = table(all$Subject, all$valid)/80
@@ -235,6 +235,9 @@ A.lmer3 = lmer(RT1 ~ Hand +  Seq * Unc + trial_index_global + sexe + rcs(age,3) 
 summary(A.lmer3)
 plotLMER.fnc(A.lmer3)
 
+A.lmer4 = lmer(RT1 ~ Seq * Unc + trial_index_global + sexe + rcs(age,3) + OS2 + Navigator2 + (1|Subject) + (1|finger_seq), data = cor2)
+summary(A.lmer4)
+
 
   ### IKI
 
@@ -316,6 +319,12 @@ summary(iki.lmer3)
 # Navigator2Internet Explorer  63.37644   36.75686   1.724
 # Navigator2Safari             24.50057   38.21857   0.641
 # 
+
+# People + machine 
+
+iki.lmer3 = lmer(IKI ~ Hand + Seq * Unc * Pos + trial_index_global + sexe + rcs(age,3) + manual + OS2 + Navigator2 + (1|Subject) + (1|finger_seq), data = cor_long2)
+summary(iki.lmer3)
+
 
 #### PLOT DATA ####
 
