@@ -8,12 +8,14 @@ load('alldata_541.RData') # Only people with no reported problem
 
 ##### Bootstrap validation #####
 
-means = aggregate(RT1 ~ Subject, FUN = mean, data = all)
 
 bootmean <- function (means, N) {sub = sample(means$Subject, N)
 sample1 = subset(means, Subject %in% sub)
 m1 = mean(sample1[,2])
 return(m1)}
+
+load('alldata_529_RT.RData')
+means = aggregate(RT1 ~ Subject, FUN = mean, data = cor)
 
 Ns = c(5, 10, 20, 50, 100, 200, 300, 400, 500)
 Ms = c()
@@ -33,8 +35,10 @@ for (N in Ns) {
 
 d = data.frame(Ns, Ms, CIl, CIu)
 ggplot(d, aes(x = Ns, y = Ms)) + geom_path() + geom_point(size = 3) + geom_errorbar(aes(ymin = CIl, ymax = CIu)) + 
-  coord_cartesian(ylim = c(575,675)) + scale_x_log10()
+  scale_x_log10() + coord_cartesian(ylim = c(570,670)) + theme_bw() + xlab('Sample size') + ylab('Mean RT (ms)')
 
+pdf('BootstrapRT.pdf', width = 7, height = 6)
+dev.off()
 
 # Distribution of means
 
@@ -58,10 +62,13 @@ all = all_3000
 
 # Same with IKI
 
-iki = data.frame(Subject = rep(all$Subject,2), IKI = c(all$IKI1, all$IKI2))
-ggplot(subset(iki, IKI < 2000), aes(IKI)) + geom_histogram()
-means = aggregate(IKI ~ Subject, FUN = mean, data = iki)
-ggplot(means, aes(IKI)) + geom_histogram(binwidth = 5)
+load('alldata_529_IKI.RData')
+means = aggregate(IKI ~ Subject, FUN = mean, data = cor_long)
+
+# iki = data.frame(Subject = rep(all$Subject,2), IKI = c(all$IKI1, all$IKI2))
+# ggplot(subset(iki, IKI < 2000), aes(IKI)) + geom_histogram()
+# means = aggregate(IKI ~ Subject, FUN = mean, data = iki)
+# ggplot(means, aes(IKI)) + geom_histogram(binwidth = 5)
 
 Ns = c(5, 10, 20, 50, 100, 200, 300, 400, 500)
 Ms = c()
@@ -81,8 +88,10 @@ for (N in Ns) {
 
 d = data.frame(Ns, Ms, CIl, CIu)
 ggplot(d, aes(x = Ns, y = Ms)) + geom_path() + geom_point(size = 3) + geom_errorbar(aes(ymin = CIl, ymax = CIu)) + 
-  coord_cartesian(ylim = c(210,260)) + scale_x_log10()
+  coord_cartesian(ylim = c(200,250)) + scale_x_log10() + theme_bw() + xlab('Sample size') + ylab('Mean IKI (ms)')
 
+pdf('BootstrapIKI.pdf', width = 7, height = 6)
+dev.off()
 
 ##### Sampling rate #####
 
@@ -93,18 +102,33 @@ RT = c(suj$RT1, suj$RT2, suj$RT3)
 RTs = sort(RT)
 d = c(0,diff(RTs))
 
-data = data.frame(x = seq(1,length(d)), RT = na.exclude(RT), RTs = RTs, d = d)
+# data = data.frame(x = seq(1,length(d)), RT = na.exclude(RT), RTs = RTs, d = d)
+# 
+# ggplot(subset(data, d<30), aes(x = x, y = sort(d))) + geom_point()
+# ggplot(subset(data, d<15), aes(x = x, y = sort(d))) + geom_point()
 
-ggplot(subset(data, d<30), aes(x = x, y = sort(d))) + geom_point()
-ggplot(subset(data, d<15), aes(x = x, y = sort(d))) + geom_point()
+data = data.frame(RT = na.exclude(RT), RTs = RTs, d = d)
+# plot(sort(data$d), ylim = c(0,45))
+data2 = subset(data, d<30)
+ggplot(data2, aes(x = 1:nrow(data2), y = sort(d))) + geom_point(alpha = 0.5) + xlab('') + ylab('RT Difference (ms)') + theme_bw() 
+
+pdf('OrderedRT_4.pdf', width = 5, height = 5)
+dev.off()
+
 
   # with modulo (8)
 suj = subset(all, Subject == sample(unique(all$Subject),1))
+suj = subset(all, Subject == 478) # 478 & 577
 RT = c(suj$RT1, suj$RT2, suj$RT3)
-data = data.frame(RT = RT, mod8 = RT %% 8, mod16 = RT %% 16)
+data = data.frame(RT = RT, mod8 = as.factor(RT %% 8), mod16 = RT %% 16)
 
-ggplot(data, aes(mod8)) + geom_histogram(binwidth = 0.5) + coord_cartesian(xlim = c(seq(0,8)))
+ggplot(data, aes(mod8)) + geom_histogram(binwidth = 0.5) + xlab('Remainder values') + ylab('Frequency') + theme_bw() + 
+  scale_x_discrete(limits = c('0','1','2','3','4','5','6','7'))
 chisq.test(table(data$mod8))$p.value
+
+pdf('DistribChi2_4.pdf', width = 5, height = 5)
+dev.off()
+
 
 
   # Let's have a criterion, according to the distribution of modulos (if homogeneous => sampling is too)
