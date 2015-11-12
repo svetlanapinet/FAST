@@ -175,14 +175,8 @@ aggregate(RT1 ~ Seq + Unc, FUN = mean, data = rt)
 
 # IKI
 
-m1 = aggregate(IKI1 ~ Subject + Hand + Seq + Unc, FUN = mean, data = cor)
-m2 = aggregate(IKI2 ~ Subject + Hand + Seq + Unc, FUN = mean, data = cor)
+m = aggregate(IKI ~ Subject + Hand + Seq + Unc + Pos, FUN = mean, data = cor_long)
 
-colnames(m1)[5] = 'IKI'
-colnames(m2)[5] = 'IKI'
-m1$Pos = 2
-m2$Pos = 3
-m = rbind(m1,m2)
 m = within(m, {Pos = as.factor(Pos)
 Seq = as.factor(Seq)
 Hand = as.factor(Hand)
@@ -199,7 +193,7 @@ summary(iki.aov)
 
 aggregate(IKI ~ Seq, FUN = mean, data = m)
 aggregate(IKI ~ Pos, FUN = mean, data = m)
-ggplot(m, aes(y = IKI, x = Seq, color = Pos)) + stat_summary(fun.y = 'mean', geom = 'point', size = 5) + stat_summary(fun.data = 'mean_cl_boot', geom = 'pointrange')
+ggplot(m, aes(y = IKI, x = Pos, color = Unc)) + stat_summary(fun.y = 'mean', geom = 'point', size = 5) + stat_summary(fun.data = 'mean_cl_boot', geom = 'pointrange')
 ggplot(m, aes(y = IKI, x = Pos, color = Seq)) + stat_summary(fun.y = 'mean', geom = 'point', size = 5) + stat_summary(fun.data = 'mean_cl_boot', geom = 'pointrange') + facet_wrap(~Unc)
 
 
@@ -378,6 +372,22 @@ summary(iki.lmer3)
 #### PLOT DATA ####
 
 library(ggplot2)
+source('/Volumes/SVETLANA/R/CLAVSEM/functionsplotswithin.R')
+
+load('alldata_529_IKI.RData')
+
+m = summarySEwithin(cor_long, 'IKI', withinvars = c('Pos', 'Unc'), idvar = 'Subject')
+
+ggplot(m, aes(x=Pos, y=IKI, group = Unc, color = Unc)) +
+  geom_line(size = 2) + geom_errorbar(width=.1, aes(ymin=IKI-ci, ymax=IKI+ci), size = 2) +
+  geom_point(shape=21, size=6, fill="white") +
+  theme_bw() + theme(legend.position = c(0.9,0.9)) + coord_cartesian(ylim = c(208, 242)) + xlab('IKI Position') + ylab('IKI (ms)') + labs(colour = 'Uncertainty') 
+
+pdf('Inter_UncPos.pdf', width = 6, height =  6)
+dev.off()
+#
+
+m = aggregate(IKI ~ Subject + Hand + Seq + Unc + Pos, FUN = mean, data = cor_long)
 
 ggplot(m, aes(y = IKI, x = Unc, color = Pos)) + geom_boxplot() 
 ggplot(m, aes(y = IKI, x = Unc)) + geom_point() + facet_wrap(~Pos)
