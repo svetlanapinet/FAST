@@ -92,15 +92,64 @@ all = merge(all, cond, all.x = T)
 all$Uncseq = NULL
 
 
-## Add a criterion of max RT ? ##
-all = subset(all, RT1 < 3000)
+    ## Criterion for RT & IKI
 
+cor = subset(all, valid == 1 & IKI1 > 0 & IKI2 > 0) # only correct responses
+
+# Distribution of RT
+ggplot(cor, aes(RT1)) + geom_histogram(binwidth = 100) 
+
+tail(sort(cor$RT1), 20) # three very extreme values (46389, 152510, 173653)
+
+cor2 = subset(cor, RT1 < 30000)
+ggplot(cor2, aes(RT1)) + geom_histogram(binwidth = 100) + scale_y_sqrt()
+
+# cor2 = subset(cor, RT1 < 10000)
+# ggplot(cor2, aes(RT1)) + geom_histogram(binwidth = 100) + scale_y_sqrt()
+
+cor3 = subset(cor, RT1 < 3000)
+ggplot(cor3, aes(RT1)) + geom_histogram(binwidth = 100) + scale_y_sqrt()
+
+
+# Distribution of IKI
+col = c('Subject', 'part', 'block', 'trial_index', 'trial_index_global', 'stimulus', 'key_seq', 'finger_seq', 'Hand', 'Seq', 'Unc')
+IKI1 = subset(cor3, select = c(col, 'IKI1'))
+IKI2 = subset(cor3, select = c(col, 'IKI2'))
+colnames(IKI1)[12] = 'IKI'
+colnames(IKI2)[12] = 'IKI'
+IKI1$Pos = factor(1)
+IKI2$Pos = factor(2)
+cor_long = rbind(IKI1, IKI2)
+
+ggplot(cor_long, aes(IKI)) + geom_histogram(binwidth = 20) + scale_y_sqrt()
+
+
+# Final datasets
 
 cor = subset(all, valid == 1 & IKI1 > 0 & IKI2 > 0)
-# nrow(cor)/nrow(all_541)
+cor = subset(cor, RT1 < 3000 & IKI1 < 1000 & IKI2 < 1000)
+
+IKI1 = subset(cor, select = c(col, 'IKI1'))
+IKI2 = subset(cor, select = c(col, 'IKI2'))
+colnames(IKI1)[12] = 'IKI'
+colnames(IKI2)[12] = 'IKI'
+IKI1$Pos = factor(1)
+IKI2$Pos = factor(2)
+cor_long = rbind(IKI1, IKI2)
+
+save(cor, file = 'alldata_529_RT.RData')
+save(cor_long, file = 'alldata_529_IKI.RData')
+
+# load('alldata_541.RData')
+# nrow(cor)/nrow(all)
 
 
-#### RT ####
+load('alldata_529_RT.RData')
+load('alldata_529_IKI.RData')
+
+#### ANOVAs ####
+
+# RT 
 
 rt = aggregate(RT1 ~ Subject + Hand + Seq + Unc, FUN = mean, data = cor)
 
@@ -124,7 +173,7 @@ aggregate(RT1 ~ Seq + Unc, FUN = mean, data = rt)
 
 
 
-#### IKI ####
+# IKI
 
 m1 = aggregate(IKI1 ~ Subject + Hand + Seq + Unc, FUN = mean, data = cor)
 m2 = aggregate(IKI2 ~ Subject + Hand + Seq + Unc, FUN = mean, data = cor)
@@ -156,7 +205,7 @@ ggplot(m, aes(y = IKI, x = Pos, color = Seq)) + stat_summary(fun.y = 'mean', geo
 
 
 
-# Mixed models
+#### Mixed models ####
 # with RT<3000 criteria
 library(lme4)
 library(rms)
@@ -348,7 +397,6 @@ qqnorm(log(cor_long$IKI))
 qqline(log(cor_long$IKI))
 
 sort(m$IKI)
-
 
 
 
